@@ -1,0 +1,327 @@
+package net.the47.loteriacaller;
+
+import android.os.Bundle;
+import android.view.View;
+import android.app.Activity;
+import android.util.Log;
+import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
+import java.util.Random;
+
+
+public class FullscreenActivity extends Activity implements OnClickListener {
+    boolean inHistory;
+    int[] arrCards;
+    int[] arrDeck;
+    int DECK_SIZE, currentCard, Bookmark;
+    Button shuffleB, previousB, firstcardB, bookmarkB, loadB, historyB;
+    ImageView cardIv; //card image view
+    TextView songTv; //song text view
+    String strSong;
+    String[] arrStrBarajas = new String[]{
+            "El Gallo", "El Diablito", "La Dama", "El Catrin",
+            "El Paraguas", "La Sirena", "La Escalera", "La Botella",
+            "El Barril", "El Arbol", "El Melon", "El Valiente",
+            "El Gorrito", "La Muerte", "La Pera", "La Bandera",
+            "El Bandolon", "El Violoncello", "La Garza", "El Pajaro",
+            "La Mano", "La Bota", "La Luna", "El Cotorro",
+            "El Borracho", "El Negrito", "El Corazon", "La Sandia",
+            "El Tambor", "El Camaron", "Las Jaras", "El Musico",
+            "La Araña", "El Soldado", "La Estrella", "El Cazo",
+            "El Mundo", "El Apache", "El Nopal", "El Alacran",
+            "La Rosa", "La Calavera", "La Campana", "El Cantarito",
+            "El Venado", "El Sol", "La Corona", "La Chalupa",
+            "El Pino", "El Pescado", "La Palma", "La Maceta",
+            "El Arpa", "La Rana"
+    };
+
+    /**
+     * Assigns values & resources to variables, sets listeners, starts the activity
+     */
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_fullscreen);
+        SetupAllVariables();
+        SetupAllViews();
+        getDeckDrawables();
+        newGame(); //disables the 3 in-game buttons
+        Log.e("LoteriaActivity","onCreate");
+    } // END onCreate
+
+
+    private void SetupAllVariables() {
+        //assign values
+        countCurrentImg(false, 0);
+        countBookmark(true);
+        DECK_SIZE	= 54;	//constant variable
+        arrCards	= new int[DECK_SIZE];
+        arrDeck		= new int[DECK_SIZE];
+    }
+
+    private void SetupAllViews() {
+        //declare the objects (buttons & views)
+        shuffleB 	= (Button)findViewById(R.id.bShuffle); //shuffle
+        firstcardB 	= (Button)findViewById(R.id.bFirstCard); //firstCard
+        previousB 	= (Button)findViewById(R.id.bPrevious); //Previous
+        bookmarkB 	= (Button)findViewById(R.id.bBookmark); //goto bookmark
+        cardIv 		= (ImageView)findViewById(R.id.ivCard); //the card
+        songTv 		= (TextView)findViewById(R.id.tvCardSong); //card text
+        //set the listeners
+        shuffleB.setOnClickListener(this);
+        firstcardB.setOnClickListener(this);
+        previousB.setOnClickListener(this);
+        bookmarkB.setOnClickListener(this);
+        //loadB.setOnClickListener(this);
+        //historyB.setOnClickListener(this);
+        cardIv.setOnClickListener(this);
+        //reset stuff
+        displaySong(true);
+        buttonStateMaint(0,false);
+        buttonStateMaint(2,false);
+        buttonStateMaint(6,false);
+    }
+
+    /**
+     * onClick -	Grabs the object by Id and tests it using Switch/Case
+     *
+     * @param	button
+     */
+    public void onClick(View button) {
+        Log.e("LoteriaActivity","Heard a Click! ");
+
+        switch (button.getId()) {
+
+            case R.id.bShuffle:
+                newGame();
+                Log.e("LoteriaActivity","Everybody's Shuffling! ");
+                break;
+
+            case R.id.ivCard:
+                displayCard(); //this adds 1 to the "currentCard" counter already
+                Log.e("LoteriaActivity","display Card ");
+
+                if(!inHistory && Bookmark < DECK_SIZE)	{
+                    countBookmark(false); //false means not to reset counter to zero
+                }
+
+                //if Prev button is disabled, yet we are not on card one...
+                if(!previousB.isEnabled() && currentCard >1) {
+                    buttonStateMaint(3,true);
+                    buttonStateMaint(4,true);
+                }
+
+                if(Bookmark == currentCard) {
+                    inHistory=false; //we are "caught up" and no longer in history of cards played
+                    buttonStateMaint(345,true); // btn 3 & 4 true, btn 5 false -- aka TTF
+                }
+                break;
+
+            case R.id.bPrevious:
+                if(currentCard == 1) { //are we at card 1?
+                    buttonStateMaint(345,false); // false,false,true -- aka FFT
+
+                    if (Bookmark == 1) {
+                        buttonStateMaint(5,false);}
+                }
+                if(currentCard != 1) { //are we at card 2 or above?
+                    countCurrentImg(false, 2); 	//subtracting (2) because ...
+                    displayCard();				//<-- this method adds (1) back
+                    inHistory=true;
+                    buttonStateMaint(5,true);
+                }
+                Log.e("LoteriaActivity","show previous ");
+                break;
+
+            case R.id.bFirstCard:
+                currentCard=0;
+                displayCard();
+                inHistory=true;
+                buttonStateMaint(345,false); // false,false,true
+                //Log.e("LoteriaActivity","goto 1st card ");
+                break;
+
+            case R.id.bBookmark:
+                inHistory=false;
+                currentCard=Bookmark-1; //we are subtracting 1 because...
+                displayCard();			//<--- this method adds 1 and shows the wrong one
+                buttonStateMaint(345,true); // true,true,false
+                Log.e("Bookmark" , "Bookmark = " + Bookmark + ", currentCard = " + currentCard);
+                break;
+
+        } //END switch button
+    } // END onClick method
+
+    /**
+     * Resets objects & views, shuffles the card array
+     */
+    private void newGame() {
+        inHistory = false;
+        countBookmark(true);				//count?
+        displaySong(true);					//reset to default?
+        countCurrentImg(false , 0);			//resets to zero
+        cardIv.setImageResource(R.drawable.logo);
+        buttonStateMaint(0,false);			//Disables all 3 in-game buttons
+        buttonStateMaint(2,true);
+        //crashLoader.ResetCacheData(); //removed from this method to have load button have access to cache
+        shuffle();							//randomize the cards
+    }
+
+    /**
+     * Draws the correct card, then adds 1 to count
+     */
+    private void displayCard() {
+        if(currentCard < DECK_SIZE) {
+            cardIv.setImageResource( arrDeck[ arrCards[currentCard] ] );
+            displaySong(false);
+            countCurrentImg(true, 1);
+        }
+
+        /** if(currentCard == 1) {
+         crashLoader.ResetCacheData(); // added here (from newgame) so once we are on card 1, loader btn is off the table
+         buttonStateMaint(2,false);
+         } */
+    }
+
+
+    /**
+     * Randomizer - uses the random swap element loop
+     */
+    void shuffle() {
+        Random rand = new Random();  // Random number generator
+        //--- Initialize the array to the integers
+        for (int i=0; i < DECK_SIZE; i++) {
+            arrCards[i] = i;
+        }
+        //--- Shuffle by exchanging each element randomly
+        for (int i=0; i< DECK_SIZE; i++) {
+            int num = rand.nextInt(DECK_SIZE); //num = random number from 0 to deck_size
+            int swap = arrCards[i]; //store current loop number in variable swap
+            arrCards[i] = arrCards[num];    //assign random # into current position in array
+            arrCards[num] = swap;           //assign loop number to the rand position
+            //ex: i=0, rand num = 53, first card is #53, last card is #0
+            //ex: i=1, rand num = 47, second card is #47, 47th card is #1
+        }
+
+        //crashLoader.CacheCardArray(arrCards);
+        Log.e("LoteriaActivity","First 5 cards = " + (arrCards[0]+1)+" "+ (arrCards[1]+1)+" "+ (arrCards[2]+1)+" "+ (arrCards[3]+1)+" "+ (arrCards[4]+1));
+    }
+
+    /**
+     * Keeps track of the furthest card dealt, or resets
+     *
+     * @param Reset
+     */
+
+    void countBookmark(boolean Reset) {
+        if(Reset) {
+            Bookmark=0;
+        } else {
+            Bookmark++;
+        }
+        //Log.e("Bookmark" , "countBookmark = " + Bookmark);
+    }
+
+    /**
+     * Does 1 of 3 things in reference to the viewable displayed card:
+     * 		Increments, Decrements, or Reset
+     *
+     * @param increased
+     * @param increment
+     */
+    void countCurrentImg(boolean increased, int increment) {
+        if (increased) {
+            currentCard += increment;
+        } else {
+            currentCard -= increment;
+        }
+        if (increment==0) {
+            currentCard = 0;
+        }
+        Log.e("Bookmark" , "countCurrentImg = " + currentCard);
+    }
+
+    /**
+     * Writes the string to the view with the current 'round' and card description
+     *
+     * @param aReset
+     */
+    void displaySong(boolean aReset) {
+        if(aReset) {
+            strSong = this.getString(R.string.new_game);
+        } else {
+            strSong= "Card # " + (1+currentCard) + " - " + arrStrBarajas[arrCards[currentCard]];
+        }
+        songTv.setText(strSong);
+    }
+
+    /**
+     * Sets the button states to enabled or disabled
+     *
+     * @param button
+     * @param btnState
+     */
+    void buttonStateMaint(int button, boolean btnState) {
+        switch (button) {
+
+            case 0: 							//all 3 in-game-buttons to same state
+                firstcardB.setEnabled(btnState);
+                previousB.setEnabled(btnState);
+                bookmarkB.setEnabled(btnState);
+                break;
+
+            case 1: 							//shuffle
+                shuffleB.setEnabled(btnState);
+                break;
+
+            case 2: 							//load
+                loadB.setEnabled(btnState);
+                break;
+
+            case 3: 							//firstCard
+                firstcardB.setEnabled(btnState);
+                break;
+
+            case 4: 							//previous
+                previousB.setEnabled(btnState);
+                break;
+
+            case 5: 							//bookmark
+                bookmarkB.setEnabled(btnState);
+                break;
+
+            case 6: 							//history
+                historyB.setEnabled(btnState);
+                break;
+
+            case 345:	//buttons 3 & 4 to the same state, button 5 to opposite state
+                firstcardB.setEnabled(btnState);
+                previousB.setEnabled(btnState);
+                bookmarkB.setEnabled(!btnState);
+                break;
+        }
+    }
+
+    /**
+     * assigns the drawable resources into the deck array
+     */
+    private void getDeckDrawables() {
+        arrDeck[0]=R.drawable.c1;		arrDeck[1]=R.drawable.c2;		arrDeck[2]=R.drawable.c3;		arrDeck[3]=R.drawable.c4;
+        arrDeck[4]=R.drawable.c5;		arrDeck[5]=R.drawable.c6;		arrDeck[6]=R.drawable.c7;		arrDeck[7]=R.drawable.c8;
+        arrDeck[8]=R.drawable.c9;		arrDeck[9]=R.drawable.c10;		arrDeck[10]=R.drawable.c11;		arrDeck[11]=R.drawable.c12;
+        arrDeck[12]=R.drawable.c13;		arrDeck[13]=R.drawable.c14;		arrDeck[14]=R.drawable.c15;		arrDeck[15]=R.drawable.c16;
+        arrDeck[16]=R.drawable.c17;		arrDeck[17]=R.drawable.c18;		arrDeck[18]=R.drawable.c19;		arrDeck[19]=R.drawable.c20;
+        arrDeck[20]=R.drawable.c21;		arrDeck[21]=R.drawable.c22;		arrDeck[22]=R.drawable.c23;		arrDeck[23]=R.drawable.c24;
+        arrDeck[24]=R.drawable.c25;		arrDeck[25]=R.drawable.c26;		arrDeck[26]=R.drawable.c27;		arrDeck[27]=R.drawable.c28;
+        arrDeck[28]=R.drawable.c29;		arrDeck[29]=R.drawable.c30;		arrDeck[30]=R.drawable.c31;		arrDeck[31]=R.drawable.c32;
+        arrDeck[32]=R.drawable.c33;		arrDeck[33]=R.drawable.c34;		arrDeck[34]=R.drawable.c35;		arrDeck[35]=R.drawable.c36;
+        arrDeck[36]=R.drawable.c37;		arrDeck[37]=R.drawable.c38;		arrDeck[38]=R.drawable.c39;		arrDeck[39]=R.drawable.c40;
+        arrDeck[40]=R.drawable.c41;		arrDeck[41]=R.drawable.c42;		arrDeck[42]=R.drawable.c43;		arrDeck[43]=R.drawable.c44;
+        arrDeck[44]=R.drawable.c45;		arrDeck[45]=R.drawable.c46;		arrDeck[46]=R.drawable.c47;		arrDeck[47]=R.drawable.c48;
+        arrDeck[48]=R.drawable.c49;		arrDeck[49]=R.drawable.c50;		arrDeck[50]=R.drawable.c51;		arrDeck[51]=R.drawable.c52;
+        arrDeck[52]=R.drawable.c53;		arrDeck[53]=R.drawable.c54;
+    }
+
+} // END class activity
